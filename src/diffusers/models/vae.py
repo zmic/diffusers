@@ -356,6 +356,9 @@ class DiagonalGaussianDistribution(object):
                 self.mean, device=self.parameters.device, dtype=self.parameters.dtype
             )
 
+    def sample_from_sample(self, sample: torch.FloatTensor) -> torch.FloatTensor:
+        return self.mean + self.std * sample
+
     def sample(self, generator: Optional[torch.Generator] = None) -> torch.FloatTensor:
         device = self.parameters.device
         sample_device = "cpu" if device.type == "mps" else device
