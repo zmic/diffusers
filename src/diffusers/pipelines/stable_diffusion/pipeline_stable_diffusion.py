@@ -354,8 +354,9 @@ class StableDiffusionPipeline(DiffusionPipeline):
         return extra_step_kwargs
 
     def check_inputs(self, prompt, height, width, callback_steps):
-        if not isinstance(prompt, str) and not isinstance(prompt, list):
-            raise ValueError(f"`prompt` has to be of type `str` or `list` but is {type(prompt)}")
+        if not prompt is None:
+            if not isinstance(prompt, str) and not isinstance(prompt, list):
+                raise ValueError(f"`prompt` has to be of type `str` or `list` but is {type(prompt)}")
 
         if height % 8 != 0 or width % 8 != 0:
             raise ValueError(f"`height` and `width` have to be divisible by 8 but are {height} and {width}.")
@@ -386,9 +387,20 @@ class StableDiffusionPipeline(DiffusionPipeline):
         return latents
 
     @torch.no_grad()
+    def encode_prompt(self, prompt, guidance_scale, negative_prompt=None, num_images_per_prompt=1):        
+        device = self._execution_device
+        do_classifier_free_guidance = guidance_scale > 1.0
+        # 3. Encode input prompt
+        text_embeddings = self._encode_prompt(
+            prompt, device, num_images_per_prompt, do_classifier_free_guidance, negative_prompt
+        )
+        return text_embeddings
+
+    @torch.no_grad()
     def __call__(
         self,
-        prompt: Union[str, List[str]],
+        prompt: Optional[Union[str, List[str]]] = None,
+        text_embeddings: Optional[torch.FloatTensor] = None,
         height: int = 512,
         width: int = 512,
         num_inference_steps: int = 50,
@@ -463,7 +475,10 @@ class StableDiffusionPipeline(DiffusionPipeline):
         self.check_inputs(prompt, height, width, callback_steps)
 
         # 2. Define call parameters
-        batch_size = 1 if isinstance(prompt, str) else len(prompt)
+        if prompt is None:
+            batch_size = 1 
+        else:
+            batch_size = 1 if isinstance(prompt, str) else len(prompt)                    
         device = self._execution_device
         # here `guidance_scale` is defined analog to the guidance weight `w` of equation (2)
         # of the Imagen paper: https://arxiv.org/pdf/2205.11487.pdf . `guidance_scale = 1`
@@ -471,9 +486,10 @@ class StableDiffusionPipeline(DiffusionPipeline):
         do_classifier_free_guidance = guidance_scale > 1.0
 
         # 3. Encode input prompt
-        text_embeddings = self._encode_prompt(
-            prompt, device, num_images_per_prompt, do_classifier_free_guidance, negative_prompt
-        )
+        if text_embeddings is None:
+            text_embeddings = self._encode_prompt(
+                prompt, device, num_images_per_prompt, do_classifier_free_guidance, negative_prompt
+            )
 
         # 4. Prepare timesteps
         self.scheduler.set_timesteps(num_inference_steps, device=device)
