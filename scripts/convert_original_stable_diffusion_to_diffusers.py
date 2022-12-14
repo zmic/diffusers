@@ -18,7 +18,8 @@ import argparse
 import os
 
 import torch
-
+from safetensors import safe_open
+from safetensors.torch import load_file
 
 try:
     from omegaconf import OmegaConf
@@ -674,8 +675,18 @@ if __name__ == "__main__":
 
     original_config = OmegaConf.load(args.original_config_file)
 
-    checkpoint = torch.load(args.checkpoint_path)
-    checkpoint = checkpoint["state_dict"]
+    if args.checkpoint_path.endswith('ckpt'):
+        checkpoint = torch.load(args.checkpoint_path)
+        checkpoint = checkpoint["state_dict"]
+    else:
+        checkpoint = load_file(args.checkpoint_path)
+        '''
+        checkpoint = {}
+        with safe_open(args.checkpoint_path, framework="pt", device="cpu") as f:
+            for key in f.keys():
+                checkpoint[key] = f.get_tensor(key)
+        '''
+        print(checkpoint.keys())
 
     num_train_timesteps = original_config.model.params.timesteps
     beta_start = original_config.model.params.linear_start
