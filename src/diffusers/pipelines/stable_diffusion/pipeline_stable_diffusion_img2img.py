@@ -401,13 +401,13 @@ class StableDiffusionImg2ImgPipeline(DiffusionPipeline):
         return timesteps, num_inference_steps - t_start
 
     def prepare_latents(self, init_image, timestep, batch_size, num_images_per_prompt, dtype, device,
-             generator=None, init_image_latents=None, noise=None):
+             generator=None, image_latents=None, noise=None):
         init_image = init_image.to(device=device, dtype=dtype)
         init_latent_dist = self.vae.encode(init_image).latent_dist
-        if init_image_latents == None:
+        if image_latents == None:
             init_latents = init_latent_dist.sample(generator=generator)
         else:
-            init_latents = init_latent_dist.sample_from_sample(init_image_latents)
+            init_latents = init_latent_dist.sample_from_sample(image_latents)
         init_latents = 0.18215 * init_latents
 
         if batch_size > init_latents.shape[0] and batch_size % init_latents.shape[0] == 0:
@@ -462,7 +462,7 @@ class StableDiffusionImg2ImgPipeline(DiffusionPipeline):
         num_images_per_prompt: Optional[int] = 1,
         eta: Optional[float] = 0.0,
         generator: Optional[torch.Generator] = None,
-        init_image_latents : Optional[torch.FloatTensor] = None,
+        image_latents : Optional[torch.FloatTensor] = None,
         noise : Optional[torch.FloatTensor] = None,
         output_type: Optional[str] = "pil",
         return_dict: bool = True,
@@ -560,8 +560,8 @@ class StableDiffusionImg2ImgPipeline(DiffusionPipeline):
 
         # 6. Prepare latent variables
         latents = self.prepare_latents(
-            init_image, latent_timestep, batch_size, num_images_per_prompt, text_embeddings.dtype, device,
-            generator, init_image_latents, noise
+            image, latent_timestep, batch_size, num_images_per_prompt, text_embeddings.dtype, device,
+            generator, image_latents, noise
         )
 
         # 7. Prepare extra step kwargs. TODO: Logic should ideally just be moved out of the pipeline
